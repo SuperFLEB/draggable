@@ -1,4 +1,4 @@
-import type {DragDropHandlers, DragDropState, Movement, StateInterface, XY} from "./types.ts";
+import type {DraggableHandlers, DraggableState, Movement, StateInterface, XY} from "./types.ts";
 import {HandlerReason} from "./types.ts";
 import windowMouse from "./windowMouse.ts";
 
@@ -18,18 +18,18 @@ const getNewDragState = (e: MouseEvent, dragState: Movement): Movement => {
 	};
 };
 
-export type DragDropReturn = {
+export type DraggableReturn = {
 	mouseDownHandler: (e: MouseEvent) => void;
 	unmountHandler: () => void;
 }
-export default function dragDrop({
+export default function draggable({
 									 onStart = null,
 									 onMove = null,
 									 onEnd = null,
 									 onMouseUp = null,
 									 xyOnStart = null,
 									 xyOnMove = null,
-								 }: DragDropHandlers = {}, {set, get}: StateInterface<DragDropState>) {
+								 }: DraggableHandlers = {}, {set, get}: StateInterface<DraggableState>) {
 	const handleDragStart = (e: MouseEvent) => {
 		const newDragState: Movement = {
 			x: e.clientX,
@@ -92,5 +92,5 @@ export default function dragDrop({
 		set("dragState", null);
 	};
 
-	return {mouseDownHandler, unmountHandler} as DragDropReturn;
+	return {mouseDownHandler, unmountHandler} as DraggableReturn;
 }

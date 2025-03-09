@@ -1,17 +1,17 @@
 import {onUnmounted, Ref, ref} from "vue";
 import windowMouse from "../core/windowMouse.ts";
-import type {DragDropState, StateInterface, WindowMouseHandlers, WindowMouseResponse} from "../core/types.ts";
+import type {DraggableState, StateInterface, WindowMouseHandlers, WindowMouseResponse} from "../core/types.ts";
 
 const useWindowMouse = (handlers: WindowMouseHandlers): {
 	mouseDownHandler: WindowMouseResponse["mouseDownHandler"],
-	stateRef: Ref<DragDropState>
+	stateRef: Ref<DraggableState>
 } => {
-	const stateRef = ref<DragDropState>({});
-	const intf: StateInterface<DragDropState> = {
-		get<StateKey extends keyof DragDropState>(key: StateKey) {
+	const stateRef = ref<DraggableState>({});
+	const intf: StateInterface<DraggableState> = {
+		get<StateKey extends keyof DraggableState>(key: StateKey) {
 			return stateRef.value[key];
 		},
-		set<StateKey extends keyof DragDropState>(key: StateKey, value: DragDropState[StateKey]): void {
+		set<StateKey extends keyof DraggableState>(key: StateKey, value: DraggableState[StateKey]): void {
 			stateRef.value[key] = value;
 		}
 	};

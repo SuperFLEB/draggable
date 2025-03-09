@@ -1,4 +1,4 @@
-import useDragDrop from "./useDragDrop.ts";
+import useDraggable from "./useDraggable.ts";
 export { default as useWindowMouse } from "./useWindowMouse.ts";
-export { useDragDrop };
-export default useDragDrop;
+export { useDraggable };
+export default useDraggable;

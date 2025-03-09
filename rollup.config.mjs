@@ -38,7 +38,7 @@ const sub = (feature) => ([
 				inlineSources: true,
 			}),
 			terser({
-				ecma: "2019",
+				ecma: "2017",
 				sourceMap: true,
 			})
 		],
@@ -60,7 +60,7 @@ export default [
 		output: {
 			format: "iife",
 			name: "$dd",
-			file: "dist/standalone/fleb-drag-drop.js",
+			file: "dist/standalone/fleb-draggable.js",
 			exports: "named",
 			sourcemap: true,
 		},
@@ -89,7 +89,7 @@ export default [
 	},
 	{
 		input: `dist/standalone/types/js/index.d.ts`,
-		output: [{file: `dist/standalone/fleb-drag-drop.d.ts`, format: "es"}],
+		output: [{file: `dist/standalone/fleb-draggable.d.ts`, format: "es"}],
 		plugins: [dts(), del({hook: "buildEnd", verbose: true, targets: `dist/standalone/types`})],
 	}
 ];

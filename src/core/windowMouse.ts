@@ -3,7 +3,7 @@ import {HandlerReason} from "./types.ts";
 
 /**
  * Creates handlers that get mouseUp and mouseMove events from the window, so situations where mouseUp happens outside
- * the component DOM are still handled. If you're making a drag-and-drop, consider the derivative "dragDrop" instead.
+ * the component DOM are still handled. If you're making a draggable element, consider the derivative "draggable" instead.
  * If you need events but want to do something else with them, though, windowMouse is here for you.
  */
 const windowMouse = ({

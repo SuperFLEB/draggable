@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>Drag-and-drop demo</title>
+	<title>Draggable demo</title>
 	<style>
 		html, body {
 			position: absolute;
@@ -32,7 +32,7 @@
 			user-select: none;
 		}
 
-		#drag-drop {
+		#draggable {
 			top: 20px;
 		}
 
@@ -54,17 +54,17 @@
 </head>
 <body>
 <main>
-	<h1>@superfleb/drag-drop<br /><code>dragDrop</code> and <code>windowMouse</code> demo</h1>
+	<h1>@superfleb/draggable<br /><code>draggable</code> and <code>windowMouse</code> demo</h1>
 	<p>
-		The <code>dragDrop()</code> window is initialized with the positioning coordinates of the window, and the
-		<code>dragDrop</code> component will keep track of drag coordinates relative that, so there&rsquo;s no
+		The <code>draggable()</code> window is initialized with the positioning coordinates of the window, and the
+		<code>draggable</code> component will keep track of drag coordinates relative that, so there&rsquo;s no
 		messy calculation between offset and client positions or keeping track of offsets yourself. You can click
 		anywhere on the window to move it, and it moves relative to where you started.
 	</p>
 
 	<p>
 		The underlying function, <code>windowMouse()</code> is also available to use. This does not provide the tracking
-		and position information that <code>dragDrop</code> does, but it does handle all events after the initial
+		and position information that <code>draggable</code> does, but it does handle all events after the initial
 		<code>mousedown</code>, and it tracks mouse movement on the window (hence the name), not the DOM element,
 		which prevents sticky drags from the mouseup happening off-element and other related issues.
 	</p>
@@ -72,35 +72,35 @@
 	<p>
 		The lack of tracking is why the box with <code>windowMouse</code> snaps itself to align the top left with the
 		mouse cursor. The only position information in the event is related to the mouse pointer. Of course, if this is
-		all you need, <code>windowMouse</code> is available. If you want simple relative drags, there's <code>dragDrop</code>.
+		all you need, <code>windowMouse</code> is available. If you want simple relative drags, there's <code>draggable</code>.
 	</p>
 
 	<p>
-		The <code>@superfleb/drag-drop</code> package provides interfaces for React (with <code>useDragDrop</code> and
+		The <code>@superfleb/draggable</code> package provides interfaces for React (with <code>usedraggable</code> and
 		<code>useWindowMouse</code> hooks), for Vue (with similar composables), for non-library JavaScript by
-		exporting functions, and this standalone version, which allows you to add <code>fleb-drag-drop.js</code> with
+		exporting functions, and this standalone version, which allows you to add <code>fleb-draggable.js</code> with
 		a simple <code>&lt;script&gt;</code> tag and use the <code>$dd</code> object in the global scope.
 	</p>
 
 	<p>
-		This does use modern ES2019 JavaScript (sorry, Internet Explorer), so a relatively modern browser is necessary.
+		This does use modern ES2017 JavaScript (sorry, Internet Explorer), so a relatively modern browser is necessary.
 	</p>
 </main>
-<div class="draggable" id="drag-drop">
-	I'm a <code>dragDrop</code> enabled element. Click and drag anywhere on me to move me.
-	<pre id="drag-drop-display">No info yet.</pre>
+<div class="draggable" id="draggable">
+	I'm a <code>draggable</code> enabled element. Click and drag anywhere on me to move me.
+	<pre id="draggable-display">No info yet.</pre>
 </div>
 <div class="draggable" id="window-mouse">
 	I'm a <code>windowMouse</code> enabled element. Click and drag anywhere on me to move me.
 </div>
 </body>
-<script type="text/javascript" src="fleb-drag-drop.js"></script>
+<script type="text/javascript" src="fleb-draggable.js"></script>
 </html>
 
 <script>
 	// First put elements to variables, because nobody likes typing "document.getElementById" over and over.
-	const dragDropElement = document.getElementById("drag-drop");
-	const dragDropDisplayElement = document.getElementById("drag-drop-display");
+	const draggableElement = document.getElementById("draggable");
+	const draggableDisplayElement = document.getElementById("draggable-display");
 	const windowMouseElement = document.getElementById("window-mouse");
 
 	// This is a utility function we'll call later. It just sets the element's position.
@@ -110,24 +110,24 @@
 	};
 
 	// This gets our element's starting X and Y position, which will be used as the initial X/Y for the drag.
-	const dragDropBox = dragDropElement.getBoundingClientRect();
+	const draggableBox = draggableElement.getBoundingClientRect();
 	let lastPositionState = {
-		x: dragDropBox.left,
-		y: dragDropBox.top
+		x: draggableBox.left,
+		y: draggableBox.top
 	};
 
-	// First, our dragDrop() element...
-	const {mouseDownHandler, unmountHandler: unmountDragDrop} = $dd.dragDrop({
+	// First, our draggable() element...
+	const {mouseDownHandler, unmountHandler: unmountdraggable} = $dd.draggable({
 
 		// A move handler-- all handlers provide both the event and the "dragState" object
 		onMove(e, dragState) {
-			dragDropDisplayElement.innerText = JSON.stringify(dragState, undefined, 2);
-			moveElement(dragDropElement, dragState.x, dragState.y);
+			draggableDisplayElement.innerText = JSON.stringify(dragState, undefined, 2);
+			moveElement(draggableElement, dragState.x, dragState.y);
 		},
 
 		// Called when the drag ends...
 		onEnd(e, dragState) {
-			dragDropDisplayElement.innerText = "LAST DRAG ENDED AT...\n" + JSON.stringify(dragState, undefined, 2);
+			draggableDisplayElement.innerText = "LAST DRAG ENDED AT...\n" + JSON.stringify(dragState, undefined, 2);
 			// Update lastPositionState so the next drag starts where the last one ended.
 			lastPositionState = {x: dragState.x, y: dragState.y};
 		},
@@ -138,11 +138,11 @@
 	});
 
 	// To apply it to an element, just use the "mousedown" handler it returns
-	dragDropElement.addEventListener("mousedown", mouseDownHandler);
+	draggableElement.addEventListener("mousedown", mouseDownHandler);
 
 	// (It also returns an "unmount" handler for when the element doesn't need to be live any more. That's used below.)
 
-	// windowMouse is more basic. It's the base that dragDrop is built on. It only has handlers with DOM MouseEvent objects.
+	// windowMouse is more basic. It's the base that draggable is built on. It only has handlers with DOM MouseEvent objects.
 	// You'll notice that in this code, the draggable snaps to where the mouse cursor is (plus [10, 10]) because
 	// there's no calculation based on the original position.
 	const {mouseDownHandler: wmMouseDownHandler, unmountHandler: wmUnmount} = $dd.windowMouse({
