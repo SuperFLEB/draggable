@@ -1,6 +1,4 @@
-# @fleb/drag-drop
-
-*Note that the namespace may be `@superfleb` instead of `@fleb` in some registries. See local listings for details.*
+# @superfleb/drag-drop
 
 Draggable element handlers for Vue, React, and Vanilla JS. Uses move/mouseUp events on the window
 to prevent drag loss from fast cursor movement.
@@ -17,37 +15,32 @@ This package provides two features: "dragDrop", a full-featured object with abso
 positions from a given start point, and the lower-level "windowMouse", that provides events, but no position or
 position-change information.
 
-For Vue and React, use the `useDragDrop` and `useWindowMouse` hooks/composables exported from @fleb/drag-drop/vue and
-@fleb/drag-drop/react sub-packages. There is also @fleb/drag-drop/js, which provides a plain-JS wrapper around the
+For Vue and React, use the `useDragDrop` and `useWindowMouse` hooks/composables exported from @superfleb/drag-drop/vue and
+@superfleb/drag-drop/react sub-packages. There is also @superfleb/drag-drop/js, which provides a plain-JS wrapper around the
 core components that manages state and returns position and distance information.
 
 ## Variations
 
-### @fleb/drag-drop/vue
+### @superfleb/drag-drop/vue
 
-```vue
-import useDragDrop from "@fleb/drag-drop/js";
+Vue interface, including internal state management and exposure of a reactive state object.
 
-<script setup>
-	const { unmountHandler, mouseDownHandlerFactory } = useDragDrop();
-	const xy = 
-	
-</script>
+### @superfleb/drag-drop/react
 
-<template>
-	<div @mousedown="mouseDownHandlerFactory({x: })">
-		...
-	</div>
-</template>
-```
+React interface, including internal state management.
 
-### @fleb/drag-drop/core
+### @superfleb/drag-drop/js
+
+Plain JS interface, including internal state management.
+
+### @superfleb/drag-drop/standalone
+
+Plain JS interface in a `<script>`-tag ready format, exposing dragDrop and windowMouse on a `$dd` global.
+
+### @superfleb/drag-drop/core
 
 Access to the core functions. This is probably not what you need, but it's there if you want it. Using core will require
 you to provide your own state handling as well as event handlers.
 
 #### Usage:
 
-```typescript
-const {}
-```
