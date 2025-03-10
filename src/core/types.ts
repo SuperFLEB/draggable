@@ -1,5 +1,7 @@
 import Draggable from "./Draggable.ts";
 
+export type FixedLengthArray<L extends number, T> = [T, ...T[]] & { length: L };
+
 export type WindowMouseState = {
 	isMouseDown?: boolean | null,
 }
@@ -9,7 +11,30 @@ export type DraggableState = {
 } & WindowMouseState;
 
 export type XY<T = number> = { x: T, y: T };
-export type Movement = {
+
+export type PixelMovement = {
+	// x, y in pixels relative to starting x and y in pixels (spx, spy)
+	pxx: number;
+	pxy: number;
+
+	// Starting x, y in pixels. What was passed in on initialization divided by pixelSize
+	pxsx: number;
+	pxsy: number;
+
+	// Pixel size (multiplier) used to calculate pixels
+	psx: number;
+	psy: number;
+
+	// Pixel delta/distance since last event
+	pxdx: number;
+	pxdy: number;
+
+	// Client (window, absolute) x, y
+	pxcx: number | null;
+	pxcy: number | null;
+}
+
+export type Movement = PixelMovement & {
 	// x, y relative to starting x and y (sx, sy)
 	x: number;
 	y: number;
@@ -21,11 +46,14 @@ export type Movement = {
 	// Delta/distance since last event
 	dx: number;
 	dy: number;
-
-	// Client (window, absolute) x, y
-	cx: number;
-	cy: number;
 }
+
+export type Clicked = {
+	buttons: number,
+	isClicked: FixedLengthArray<16, boolean>
+};
+
+export type DragState = Movement & Clicked;
 
 export type {Movement as default};
 export type DraggableEventHandler = (this: Draggable, e: MouseEvent, dragState: Movement) => void;

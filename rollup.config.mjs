@@ -11,6 +11,8 @@ const externals = {
 	"core": [],
 };
 
+const minify = true;
+
 const sub = (feature) => ([
 	{
 		input: `src/${feature}/index.ts`,
@@ -37,8 +39,8 @@ const sub = (feature) => ([
 				declarationDir: `dist/${feature}/types`,
 				inlineSources: true,
 			}),
-			terser({
-				ecma: "2017",
+			minify && terser({
+				ecma: "2022",
 				sourceMap: true,
 			})
 		],
@@ -69,11 +71,10 @@ export default [
 				tsconfig: "tsconfig.json",
 				declaration: true,
 				declarationDir: `dist/standalone/types`,
-				inlineSources: true,
-				target: "es2017"
+				inlineSources: true
 			}),
-			terser({
-				ecma: "2017",
+			minify && terser({
+				ecma: "2022",
 				sourceMap: true,
 			}),
 			copy({

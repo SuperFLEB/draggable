@@ -88,7 +88,7 @@
 	</p>
 
 	<p>
-		This does use modern ES2017 JavaScript (sorry, Internet Explorer), so a relatively modern browser is necessary.
+		This does use modern ES2022 JavaScript (sorry, Internet Explorer), so a relatively modern browser is necessary.
 	</p>
 </main>
 <div class="draggable" id="draggable">
@@ -97,10 +97,6 @@
 </div>
 <div class="draggable" id="window-mouse">
 	I'm a <code>windowMouse</code> enabled element. Click and drag anywhere on me to move me.
-</div>
-<div class="draggable" id="anydrag">
-	I'm a <code>draggable</code> enabled element, but you can drag me with any mouse button. Click and drag anywhere on me to move me.
-	<pre id="anydrag-display">No info yet.</pre>
 </div>
 </body>
 <script type="text/javascript" src="superfleb-draggable.js"></script>
@@ -141,21 +137,6 @@
 		draggable.xy = lastPositionState;
 	}
 	draggableElement.addEventListener("mousedown", draggable.dragStartHandler);
-
-	const anydraggable = new $dd.Draggable();
-	anydraggable.onMove = (e, dragState) => {
-		anydragDisplayElement.innerText = JSON.stringify(dragState, undefined, 2);
-		moveElement(anydragElement, dragState.x, dragState.y);
-	};
-	anydraggable.onEnd = (e, dragState) => {
-		anydragDisplayElement.innerText = "LAST DRAG ENDED AT...\n" + JSON.stringify(dragState, undefined, 2);
-		// Update lastPositionState so the next drag starts where the last one ended.
-		lastPositionState = {x: dragState.x, y: dragState.y};
-	};
-	anydraggable.beforeStart = (e, dragState) => {
-		anydraggable.xy = lastPositionState;
-	}
-	anydragElement.addEventListener("mousedown", anydraggable.dragStartHandler);
 
 	// windowMouse is more basic. It's the base that draggable is built on. It only has handlers with DOM MouseEvent objects.
 	// You'll notice that in this code, the draggable snaps to where the mouse cursor is (plus [10, 10]) because

@@ -1,4 +1,5 @@
 import {DraggableHandlers, WindowMouseEventHandler, WindowMouseHandler, WindowMouseHandlers} from "./types.ts";
+import {MouseEvent} from "react";
 
 const handlerNames: (keyof WindowMouseHandlers)[] = ["onStart", "onMove", "onMouseUp", "onEnd"] as const;
 
@@ -36,13 +37,22 @@ class WindowMouse {
 	onStart: WindowMouseEventHandler | null = null;
 	onMove: WindowMouseEventHandler | null = null;
 	onMouseUp: WindowMouseEventHandler | null = null;
+	onButtonChange: WindowMouseEventHandler | null = null;
 	onEnd: WindowMouseHandler | null = null;
 
 	// Use bitwise OR (|) to combine, e.g.:
 	//   wm.buttons = BUTTON.PRIMARY | BUTTON.SECONDARY;
 	buttons: number = BUTTON.PRIMARY;
+	suppressContextMenuDuringDrag = true;
+	mouseUpOnPhantomMove = true;
 
+	#inDrag = false;
 	#endAbort = new AbortController();
+
+	#isClicked(e: MouseEvent): boolean {
+		// tslint:disable-next-line:no-bitwise
+		return Boolean(e.buttons & this.buttons);
+	}
 
 	#setHandlers(handlers: WindowMouseHandlers) {
 		for (const handlerName of handlerNames) {
@@ -52,29 +62,68 @@ class WindowMouse {
 		}
 	}
 
+	/**
+	 * Checks whether the event is another button click while currently in drag
+	 * (in which case, handlers should ignore the click).
+	 * @private
+	 */
+	#checkMulti(e: MouseEvent) {
+		if (!this.#isClicked(e)) return false;
+		if (!this.#inDrag) return false;
+		this.onButtonChange?.(e);
+		return true;
+	}
+
 	#start(e: MouseEvent) {
-		// tslint:disable-next-line:no-bitwise
-		if (!(e.buttons & this.buttons)) return;
+		if (!this.#isClicked(e)) return;
+		this.#checkMulti(e);
+
+		if (this.inDrag) return;
+		this.#inDrag = true;
 
 		this.#endAbort.abort();
 		this.#endAbort = new AbortController();
-		window.addEventListener("mousemove", this.#move.bind(this), {signal: AbortSignal.any([this.#endAbort.signal])});
-		window.addEventListener("mouseup", this.#mouseUp.bind(this), {signal: AbortSignal.any([this.#endAbort.signal])});
+
+		if (this.suppressContextMenuDuringDrag) {
+			e.target?.addEventListener("contextmenu", (ee: MouseEvent) => { ee.preventDefault(); }, {signal: this.#endAbort.signal});
+			window.addEventListener("contextmenu", (ee: MouseEvent) => { ee.preventDefault(); }, {signal: this.#endAbort.signal});
+		}
+		window.addEventListener("mousemove", this.#move.bind(this), {signal: this.#endAbort.signal});
+		window.addEventListener("mouseup", this.#mouseUp.bind(this), {signal: this.#endAbort.signal});
 		this.onStart?.(e);
 	}
 
 	#move(e: MouseEvent) {
+		if (this.mouseUpOnPhantomMove && !this.#isClicked(e)) {
+			this.#mouseUp(e);
+			return;
+		}
 		this.onMove?.(e);
 	}
 
 	#mouseUp(e: MouseEvent) {
+		// tslint:disable-next-line:no-bitwise
+		if (e.buttons & this.buttons) {
+			// One of our requested buttons is still being clicked. Do not end.
+			return;
+		}
+		this.#inDrag = false;
 		this.onMouseUp?.(e);
 		this.onEnd?.(e);
 		this.#endAbort.abort();
 	}
 
 	#detach(): void {
+		this.#inDrag = false;
 		this.#endAbort.abort();
+	}
+
+	get checkMulti() {
+		return this.#checkMulti;
+	}
+
+	get inDrag() {
+		return this.#inDrag;
 	}
 
 	get dragStartHandler() {

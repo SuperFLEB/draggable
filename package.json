@@ -2,6 +2,7 @@
 	"name": "@superfleb/draggable",
 	"version": "0.0.1",
 	"description": "Draggable elements for Vue, React, and JS",
+	"type": "module",
 	"license": "UNLICENSED",
 	"author": {
 		"name": "FLEB (a.k.a. SuperFLEB)",
@@ -22,41 +23,41 @@
 	"exports": {
 		".": {
 			"require": {
-				"default": "./dist/core/index.mjs",
+				"default": "./dist/core/index.cjs",
 				"types": "./dist/core/index.d.ts"
 			},
 			"import": {
-				"default": "./dist/core/index.cjs",
+				"default": "./dist/core/index.mjs",
 				"types": "./dist/core/index.d.ts"
 			}
 		},
 		"./vue": {
 			"require": {
-				"default": "./dist/vue/index.mjs",
+				"default": "./dist/vue/index.cjs",
 				"types": "./dist/vue/index.d.ts"
 			},
 			"import": {
-				"default": "./dist/vue/index.cjs",
+				"default": "./dist/vue/index.mjs",
 				"types": "./dist/vue/index.d.ts"
 			}
 		},
 		"./react": {
 			"require": {
-				"default": "./dist/react/index.mjs",
+				"default": "./dist/react/index.cjs",
 				"types": "./dist/react/index.d.ts"
 			},
 			"import": {
-				"default": "./dist/react/index.cjs",
+				"default": "./dist/react/index.mjs",
 				"types": "./dist/react/index.d.ts"
 			}
 		},
 		"./js": {
 			"require": {
-				"default": "./dist/js/index.mjs",
+				"default": "./dist/js/index.cjs",
 				"types": "./dist/js/index.d.ts"
 			},
 			"import": {
-				"default": "./dist/js/index.cjs",
+				"default": "./dist/js/index.mjs",
 				"types": "./dist/js/index.d.ts"
 			}
 		}
