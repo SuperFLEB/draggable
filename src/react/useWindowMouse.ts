@@ -1,16 +1,15 @@
-import {useEffect, useState} from "react";
-import {WindowMouseHandlers, WindowMouseState} from "../core/types.ts";
-import {windowMouse} from "../core/index.ts";
+import {useEffect, useRef} from "react";
+import {WindowMouseHandlers} from "../core/types.ts";
+import WindowMouse, {BUTTON} from "../core/WindowMouse.ts";
 
-const useWindowMouse = (handlers: WindowMouseHandlers) => {
-	const [state, updateState] = useState<WindowMouseState>({});
-	const {mouseDownHandler, unmountHandler} = windowMouse(handlers, {
-		get: (k) => state[k],
-		set: (k, v) => updateState({...state, [k]: v})
+const useWindowMouse = (handlers: WindowMouseHandlers, buttons: number = BUTTON.PRIMARY) => {
+	const windowMouseRef = useRef<WindowMouse>(new WindowMouse());
+	useEffect(() => {
+		windowMouseRef.current.setHandlers(handlers);
+		windowMouseRef.buttons = buttons;
+		return () => windowMouseRef.detach();
 	});
-	// Only effect is to run the unmount handler on unmount
-	useEffect(() => unmountHandler);
-	return {mouseDownHandler};
+	return {dragStartHandler: windowMouseRef.current.dragStartHandler};
 };
 
 export default useWindowMouse;

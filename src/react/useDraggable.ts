@@ -1,20 +1,22 @@
-import {useEffect, useState} from "react";
-import {DraggableHandlers, DraggableState} from "../core/types.ts";
-import {draggable} from "../core/index.ts";
+import {useEffect, useRef, useState} from "react";
+import {DraggableHandlers, DraggableState, Movement} from "../core/types.ts";
+import {Draggable} from "../core/index.ts";
+import {BUTTON} from "../core/WindowMouse.ts";
 
-const useDraggable = (handlers: DraggableHandlers = {}) => {
+const useDraggable = (handlers: DraggableHandlers = {}, buttons: BUTTON.PRIMARY) => {
 	const [state, updateState] = useState<DraggableState>({});
-	const {mouseDownHandler, unmountHandler} = draggable(handlers, {
-		get(key: string) {
-			return state[key];
-		},
-		set(key: string, value: any) {
-			updateState({...state, [key]: value});
-		}
+	const draggableRef = useRef(new Draggable());
+
+	useEffect(() => {
+		draggableRef.current.setHandlers(handlers);
+		draggableRef.current.buttons = buttons;
+		draggableRef.current.onStateChange = (_: null, newState: Movement) => {
+			updateState(newState);
+		};
+		return () => draggableRef.current.detach();
 	});
-	// No effect except running unmountHandler on unmount.
-	useEffect(() => unmountHandler);
-	return {mouseDownHandler};
+
+	return {dragStartHandler: draggableRef.current.dragStartHandler};
 };
 
 export default useDraggable;

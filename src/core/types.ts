@@ -1,3 +1,5 @@
+import Draggable from "./Draggable.ts";
+
 export type WindowMouseState = {
 	isMouseDown?: boolean | null,
 }
@@ -5,11 +7,6 @@ export type WindowMouseState = {
 export type DraggableState = {
 	dragState?: Movement | null;
 } & WindowMouseState;
-
-export type StateInterface<T extends DraggableState | WindowMouseState> = {
-	get: <StateKey extends keyof T>(key: StateKey) => T[StateKey];
-	set: <StateKey extends keyof T>(key: StateKey, value: T[StateKey]) => void;
-}
 
 export type XY<T = number> = { x: T, y: T };
 export type Movement = {
@@ -31,51 +28,42 @@ export type Movement = {
 }
 
 export type {Movement as default};
-export type DraggableEventHandler = (e: MouseEvent, dragState: Movement) => void;
-export type DraggableSyntheticHandler = (e: null, dragState: Movement) => void;
-export type DraggableHandler = (e: MouseEvent | null, dragState: Movement) => void;
-export type DragTransformer = (e: MouseEvent, priorDragState: Movement, proposedDragState: Movement) => XY | null;
+export type DraggableEventHandler = (this: Draggable, e: MouseEvent, dragState: Movement) => void;
+export type DraggableHandler = (this: Draggable, e: MouseEvent | null, dragState: Movement) => void;
 export type DraggableHandlers = {
+	// Intercept before start to, e.g., transform the coordinates
+	beforeStart?: DraggableEventHandler | null;
 	// Handler for when the drag starts, on mousedown.
 	onStart?: DraggableEventHandler | null;
+	// Intercept before move to, e.g., transform the coordinates
+	beforeMove?: DraggableEventHandler | null;
 	// Handler for when the mouse button is down and the mouse moves, mid-drag.
 	onMove?: DraggableEventHandler | null;
+	// Intercept before end to, e.g., transform the coordinates
+	beforeEnd?: DraggableHandler | null;
 	// Handler for when the drag ends, either due to mouseup or the component unmounting. Event may be null in the case of an unmount.
 	onEnd?: DraggableHandler | null;
 	// Handler for when the drag ends due to mouseup. Not run when the component unmounts.
 	onMouseUp?: DraggableEventHandler | null;
-
-	// Interpret and modify the initial drag state on mousedown
-	xyOnStart?: DragTransformer | null;
-	// Interpret and modify the initial drag state on drag move. Note that this will zero any dx/dy delta values for the move.
-	xyOnMove?: DragTransformer | null;
+	// On any update
+	onUpdate?: DraggableHandler | null;
 }
 
-export type WindowMouseEventHandler = ((e: MouseEvent, reason: Exclude<HandlerReason, HandlerReason.UNMOUNT>) => void);
-export type WindowMouseDragEndHandler = {
-	(e: null, reason: HandlerReason.UNMOUNT): void;
-	(e: MouseEvent, reason: HandlerReason.MOUSEUP): void;
-}
+// Includes the onStateChange handler for use by adapters.
+// If you're not writing an adapter, use "onUpdate". It's the same thing.
+export type AllDraggableHandlers = DraggableHandlers & {
+	onStateChange?: DraggableHandler;
+};
 
+export type WindowMouseEventHandler = ((e: MouseEvent) => void);
+export type WindowMouseHandler = ((e: MouseEvent | null) => void);
 export type WindowMouseHandlers = {
 	// Handler to run when the mouse button goes down.
-	dragStartHandler?: WindowMouseEventHandler;
+	onStart?: WindowMouseEventHandler;
 	// Handler to run when the mouse moves during a drag.
-	dragMoveHandler?: WindowMouseEventHandler;
+	onMove?: WindowMouseEventHandler;
 	// Handler to run when the mouse button is released or when the component unmounts. This happens any time move events will no longer be handled.
-	dragEndHandler?: WindowMouseDragEndHandler;
+	onEnd?: WindowMouseEventHandler;
 	// Handler to run when the mouse button is released. Does not trigger when the drag ends because the component is unmounted.
-	mouseUpHandler?: WindowMouseEventHandler;
-}
-
-export type WindowMouseResponse = {
-	mouseDownHandler: (e: MouseEvent) => void;
-	unmountHandler: () => void;
-}
-
-export const enum HandlerReason {
-	MOUSEDOWN = "mousedown",
-	MOVE = "mousemove",
-	MOUSEUP = "mouseup",
-	UNMOUNT = "unmount",
+	onMouseUp?: WindowMouseEventHandler;
 }

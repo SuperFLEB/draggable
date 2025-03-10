@@ -1,5 +1,6 @@
-import {DraggableEventHandler, DraggableHandler, Movement, XY} from "./types.ts";
-import WindowMouse from "./WindowMouseOo.ts";
+import {DraggableEventHandler, DraggableHandler, DraggableHandlers, Movement, XY} from "./types.ts";
+import WindowMouse, {BUTTON} from "./WindowMouse.ts";
+const handlerNames: (keyof DraggableHandlers)[] = ["beforeStart", "onStart", "beforeMove", "onMove", "beforeEnd", "onEnd", "onUpdate"] as const;
 
 const xyOf = (xy: XY) => ({x: xy.x, y: xy.y});
 const getNextMovement = (e: MouseEvent, movement: Movement): Movement => {
@@ -35,38 +36,39 @@ class Draggable {
 		this.#windowMouse = new WindowMouse();
 	}
 
+	// External event callbacks
+
 	beforeStart: DraggableEventHandler | null = null;
 	onStart: DraggableEventHandler | null = null;
 	beforeMove: DraggableEventHandler | null = null;
 	onMove: DraggableEventHandler | null = null;
 	beforeEnd: DraggableHandler | null = null;
 	onEnd: DraggableHandler | null = null;
+	onUpdate: DraggableHandler | null = null;
+
+	// This is a redundant event specifically to be bound to by adapters.
+	// Don't pass this to your consumers. It's all yours. Tell them to use onUpdate.
+	onStateChange: DraggableHandler | null = null;
+
+	#setHandlers(handlers: DraggableHandlers) {
+		for (const handlerName of handlerNames) {
+			if (handlers[handlerName]) {
+				// It's okay, TypeScript. I've got this under control.
+				(this as any)[handlerName] = handlers[handlerName];
+			}
+		}
+	}
+
+	// Options
 
 	mutateState = false;
+	enabled = true;
 
-	get state() {
-		return this.mutateState ? this.#movement : {...this.#movement};
-	}
+	// buttons: number = BUTTON.PRIMARY;
+	get buttons(): number { return this.#windowMouse.buttons; }
+	set buttons(value: number) { this.#windowMouse.buttons = value; }
 
-	get setXy() {
-		return this.#setXy;
-	}
-
-	#setXy(xy: XY) {
-		this.#updateMovement({
-			...xy,
-			sx: xy.x,
-			sy: xy.y,
-		});
-	}
-
-	get attach() {
-		return this.#attach;
-	}
-
-	get detach() {
-		return this.#detach;
-	}
+	// Private properties
 
 	#windowMouse: WindowMouse;
 	#movement: Movement = getNewMovement({x: 0, y: 0});
@@ -75,13 +77,16 @@ class Draggable {
 		const movement = this.state;
 		Object.assign(movement, newMovement);
 		this.#movement = movement;
+		this.onStateChange?.(null, this.state);
+		this.onUpdate?.(null, this.state);
 	}
 
-	#attach(element: HTMLElement) {
-		this.#windowMouse.onStart = this.#start.bind(this);
+	#dragStartHandler(e: MouseEvent) {
+		if (!this.enabled) return;
 		this.#windowMouse.onMove = this.#move.bind(this);
 		this.#windowMouse.onEnd = this.#end.bind(this);
-		this.#windowMouse.attach(element);
+		this.#windowMouse.dragStartHandler(e);
+		this.#start(e);
 	}
 
 	#start(e: MouseEvent) {
@@ -96,14 +101,46 @@ class Draggable {
 		this.onMove?.(e, this.state);
 	}
 
-	#end(e: MouseEvent) {
-		this.#updateMovement(getNextMovement(e, this.state));
+	#end(e: MouseEvent | null) {
+		if (e) this.#updateMovement(getNextMovement(e, this.state));
 		this.beforeEnd?.(e, this.state);
 		this.onEnd?.(e, this.state);
 	}
 
 	#detach() {
 		this.#windowMouse.detach();
+	}
+
+	// Property accessors
+
+	get state(): Movement {
+		return this.mutateState ? this.#movement : {...this.#movement};
+	}
+
+	get xy(): XY {
+		return xyOf(this.#movement);
+	}
+
+	set xy(xy: XY) {
+		this.#updateMovement({
+			...xy,
+			sx: xy.x,
+			sy: xy.y,
+		});
+	}
+
+	// Method accessors (read-only)
+
+	get detach() {
+		return this.#detach;
+	}
+
+	get dragStartHandler() {
+		return this.#dragStartHandler.bind(this);
+	}
+
+	get setHandlers() {
+		return this.#setHandlers;
 	}
 }
 

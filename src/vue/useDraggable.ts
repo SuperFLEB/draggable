@@ -1,21 +1,26 @@
-import {onUnmounted, ref, type Ref} from "vue";
-import draggable, {DraggableReturn} from "../core/draggable.ts";
+import {onMounted, onUnmounted, ref, type Ref} from "vue";
 import {DraggableHandlers, DraggableState} from "../core/types.ts";
+import {Draggable} from "../core/index.ts";
+import {BUTTON} from "../core/WindowMouse.ts";
 
-export type UseDraggable = (handlers: DraggableHandlers) => { mouseDownHandler: DraggableReturn["mouseDownHandler"], stateRef: Ref<DraggableState> };
+export type UseDraggable = (handlers: DraggableHandlers, buttons: number) => { dragStartHandler: Draggable["dragStartHandler"], stateRef: Ref<DraggableState> };
 
-const useDraggable: UseDraggable = (handlers: DraggableHandlers) => {
+const useDraggable: UseDraggable = (handlers: DraggableHandlers, buttons: number = BUTTON.PRIMARY) => {
 	const stateRef = ref<DraggableState>({});
-	const intf = {
-		get<StateKey extends keyof DraggableState>(key: StateKey) {
-			return stateRef.value[key];
-		},
-		set<StateKey extends keyof DraggableState>(key: StateKey, value: DraggableState[StateKey]) {
-			stateRef.value[key] = value;
-		}
-	};
-	const { mouseDownHandler, unmountHandler } = draggable(handlers, intf);
-	onUnmounted(unmountHandler);
-	return {mouseDownHandler, stateRef};
+	const draggableRef = ref<Draggable>(new Draggable());
+	onMounted(() => {
+		draggableRef.value.setHandlers(handlers);
+		draggableRef.value.onStateChange((_: null, newState: DraggableState) => {
+			stateRef.value = newState;
+		});
+		draggableRef.value.buttons = buttons;
+	})
+	onUnmounted(() => {
+		draggableRef.value.detach();
+		draggableRef.value = null;
+		stateRef.value = {};
+	});
+	return {dragStartHandler: draggableRef.value.dragStartHandler, stateRef};
 };
+
 export default useDraggable;

@@ -40,6 +40,10 @@
 			top: 340px;
 		}
 
+		#anydrag {
+			top: 680px;
+		}
+
 		main {
 			padding: 20px;
 			font-size: 20px;
@@ -94,6 +98,10 @@
 <div class="draggable" id="window-mouse">
 	I'm a <code>windowMouse</code> enabled element. Click and drag anywhere on me to move me.
 </div>
+<div class="draggable" id="anydrag">
+	I'm a <code>draggable</code> enabled element, but you can drag me with any mouse button. Click and drag anywhere on me to move me.
+	<pre id="anydrag-display">No info yet.</pre>
+</div>
 </body>
 <script type="text/javascript" src="superfleb-draggable.js"></script>
 </html>
@@ -102,6 +110,8 @@
 	// First put elements to variables, because nobody likes typing "document.getElementById" over and over.
 	const draggableElement = document.getElementById("draggable");
 	const draggableDisplayElement = document.getElementById("draggable-display");
+	const anydragElement = document.getElementById("draggable");
+	const anydragDisplayElement = document.getElementById("draggable-display");
 	const windowMouseElement = document.getElementById("window-mouse");
 
 	// This is a utility function we'll call later. It just sets the element's position.
@@ -128,10 +138,24 @@
 		lastPositionState = {x: dragState.x, y: dragState.y};
 	};
 	draggable.beforeStart = (e, dragState) => {
-		draggable.setXy(lastPositionState);
+		draggable.xy = lastPositionState;
 	}
-	draggable.attach(draggableElement);
+	draggableElement.addEventListener("mousedown", draggable.dragStartHandler);
 
+	const anydraggable = new $dd.Draggable();
+	anydraggable.onMove = (e, dragState) => {
+		anydragDisplayElement.innerText = JSON.stringify(dragState, undefined, 2);
+		moveElement(anydragElement, dragState.x, dragState.y);
+	};
+	anydraggable.onEnd = (e, dragState) => {
+		anydragDisplayElement.innerText = "LAST DRAG ENDED AT...\n" + JSON.stringify(dragState, undefined, 2);
+		// Update lastPositionState so the next drag starts where the last one ended.
+		lastPositionState = {x: dragState.x, y: dragState.y};
+	};
+	anydraggable.beforeStart = (e, dragState) => {
+		anydraggable.xy = lastPositionState;
+	}
+	anydragElement.addEventListener("mousedown", anydraggable.dragStartHandler);
 
 	// windowMouse is more basic. It's the base that draggable is built on. It only has handlers with DOM MouseEvent objects.
 	// You'll notice that in this code, the draggable snaps to where the mouse cursor is (plus [10, 10]) because
@@ -141,6 +165,6 @@
 	windowMouse.onMove = (e, dragState) => {
 		moveElement(windowMouseElement, e.clientX - 10, e.clientY - 10);
 	};
-	windowMouse.attach(windowMouseElement);
+	windowMouseElement.addEventListener("mousedown", windowMouse.dragStartHandler);
 
 </script>
