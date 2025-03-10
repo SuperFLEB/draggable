@@ -54,7 +54,7 @@
 </head>
 <body>
 <main>
-	<h1>@superfleb/draggable<br /><code>draggable</code> and <code>windowMouse</code> demo</h1>
+	<h1>@superfleb/draggable<br/><code>draggable</code> and <code>windowMouse</code> demo</h1>
 	<p>
 		The <code>draggable()</code> window is initialized with the positioning coordinates of the window, and the
 		<code>draggable</code> component will keep track of drag coordinates relative that, so there&rsquo;s no
@@ -72,7 +72,8 @@
 	<p>
 		The lack of tracking is why the box with <code>windowMouse</code> snaps itself to align the top left with the
 		mouse cursor. The only position information in the event is related to the mouse pointer. Of course, if this is
-		all you need, <code>windowMouse</code> is available. If you want simple relative drags, there's <code>draggable</code>.
+		all you need, <code>windowMouse</code> is available. If you want simple relative drags, there's
+		<code>draggable</code>.
 	</p>
 
 	<p>
@@ -94,7 +95,7 @@
 	I'm a <code>windowMouse</code> enabled element. Click and drag anywhere on me to move me.
 </div>
 </body>
-<script type="text/javascript" src="fleb-draggable.js"></script>
+<script type="text/javascript" src="superfleb-draggable.js"></script>
 </html>
 
 <script>
@@ -116,46 +117,30 @@
 		y: draggableBox.top
 	};
 
-	// First, our draggable() element...
-	const {mouseDownHandler, unmountHandler: unmountdraggable} = $dd.draggable({
+	const draggable = new $dd.Draggable();
+	draggable.onMove = (e, dragState) => {
+		draggableDisplayElement.innerText = JSON.stringify(dragState, undefined, 2);
+		moveElement(draggableElement, dragState.x, dragState.y);
+	};
+	draggable.onEnd = (e, dragState) => {
+		draggableDisplayElement.innerText = "LAST DRAG ENDED AT...\n" + JSON.stringify(dragState, undefined, 2);
+		// Update lastPositionState so the next drag starts where the last one ended.
+		lastPositionState = {x: dragState.x, y: dragState.y};
+	};
+	draggable.beforeStart = (e, dragState) => {
+		draggable.setXy(lastPositionState);
+	}
+	draggable.attach(draggableElement);
 
-		// A move handler-- all handlers provide both the event and the "dragState" object
-		onMove(e, dragState) {
-			draggableDisplayElement.innerText = JSON.stringify(dragState, undefined, 2);
-			moveElement(draggableElement, dragState.x, dragState.y);
-		},
-
-		// Called when the drag ends...
-		onEnd(e, dragState) {
-			draggableDisplayElement.innerText = "LAST DRAG ENDED AT...\n" + JSON.stringify(dragState, undefined, 2);
-			// Update lastPositionState so the next drag starts where the last one ended.
-			lastPositionState = {x: dragState.x, y: dragState.y};
-		},
-
-		// There are two "transformer" hooks: xyOnStart and xyOnMove. These let you set or derive your own x,y values
-		// from outside data (such as the window position) or derived from the event and dragState.
-		xyOnStart: (e, dragState) => lastPositionState
-	});
-
-	// To apply it to an element, just use the "mousedown" handler it returns
-	draggableElement.addEventListener("mousedown", mouseDownHandler);
-
-	// (It also returns an "unmount" handler for when the element doesn't need to be live any more. That's used below.)
 
 	// windowMouse is more basic. It's the base that draggable is built on. It only has handlers with DOM MouseEvent objects.
 	// You'll notice that in this code, the draggable snaps to where the mouse cursor is (plus [10, 10]) because
 	// there's no calculation based on the original position.
-	const {mouseDownHandler: wmMouseDownHandler, unmountHandler: wmUnmount} = $dd.windowMouse({
-		// The handler for movement during a drag.
-		dragMoveHandler(e) {
-			moveElement(windowMouseElement, e.clientX - 10, e.clientY - 10);
-		}
-	});
 
-	// ...and we make the windowMouse element live.
-	windowMouseElement.addEventListener("mousedown", wmMouseDownHandler);
-
-	// Normally, unmounting would be done by a component library or something. Here, it's just attached to the button.
-	document.getElementById("unmount").addEventListener("mousedown", unmountAll);
+	const windowMouse = new $dd.WindowMouse();
+	windowMouse.onMove = (e, dragState) => {
+		moveElement(windowMouseElement, e.clientX - 10, e.clientY - 10);
+	};
+	windowMouse.attach(windowMouseElement);
 
 </script>

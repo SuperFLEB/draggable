@@ -60,7 +60,7 @@ export default [
 		output: {
 			format: "iife",
 			name: "$dd",
-			file: "dist/standalone/fleb-draggable.js",
+			file: "dist/standalone/superfleb-draggable.js",
 			exports: "named",
 			sourcemap: true,
 		},

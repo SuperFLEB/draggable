@@ -1,2 +1,2 @@
-export {default as draggable} from "./draggable.ts";
-export {default as windowMouse} from "./windowMouse.ts";
+export {default as Draggable} from "./Draggable.ts";
+export {default as WindowMouse} from "./WindowMouse.ts";

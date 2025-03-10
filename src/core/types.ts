@@ -31,18 +31,19 @@ export type Movement = {
 }
 
 export type {Movement as default};
-type DraggableHandler = (e: MouseEvent, dragState: Movement) => void;
-type DragTransformer = (e: MouseEvent, priorDragState: Movement, proposedDragState: Movement) => XY | null;
-type DragEndHandler = (e: MouseEvent | null, dragState: Movement) => void;
+export type DraggableEventHandler = (e: MouseEvent, dragState: Movement) => void;
+export type DraggableSyntheticHandler = (e: null, dragState: Movement) => void;
+export type DraggableHandler = (e: MouseEvent | null, dragState: Movement) => void;
+export type DragTransformer = (e: MouseEvent, priorDragState: Movement, proposedDragState: Movement) => XY | null;
 export type DraggableHandlers = {
 	// Handler for when the drag starts, on mousedown.
-	onStart?: DraggableHandler | null;
+	onStart?: DraggableEventHandler | null;
 	// Handler for when the mouse button is down and the mouse moves, mid-drag.
-	onMove?: DraggableHandler | null;
+	onMove?: DraggableEventHandler | null;
 	// Handler for when the drag ends, either due to mouseup or the component unmounting. Event may be null in the case of an unmount.
-	onEnd?: DragEndHandler | null;
+	onEnd?: DraggableHandler | null;
 	// Handler for when the drag ends due to mouseup. Not run when the component unmounts.
-	onMouseUp?: DraggableHandler | null;
+	onMouseUp?: DraggableEventHandler | null;
 
 	// Interpret and modify the initial drag state on mousedown
 	xyOnStart?: DragTransformer | null;
