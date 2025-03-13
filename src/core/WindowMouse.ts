@@ -1,37 +1,7 @@
-import {DraggableHandlers, WindowMouseEventHandler, WindowMouseHandler, WindowMouseHandlers} from "./types.ts";
-import {MouseEvent} from "react";
+import {WindowMouseEventHandler, WindowMouseHandler, WindowMouseHandlers} from "./types.ts";
+import {Button} from "./enums.ts";
 
 const handlerNames: (keyof WindowMouseHandlers)[] = ["onStart", "onMove", "onMouseUp", "onEnd"] as const;
-
-export const enum BUTTON {
-	NONE = 0,       // No button or un-initialized
-	ANY = 65535,    // Any button
-
-	// The first five buttons are supported by most browsers
-	PRIMARY = 1,    // Primary button (usually the left button)
-	SECONDARY = 2,  // Secondary button (usually the right button)
-	MIDDLE = 2 ** 2,     // Auxiliary (usually the mouse wheel button or middle button)
-
-	BUTTON_1 = 1,
-	BUTTON_2 = 2,
-	BUTTON_3 = 2 ** 2,
-
-	BUTTON_4 = 2 ** 3,   // 4th button (typically the "Browser Back" button)
-	BUTTON_5 = 2 ** 4,   // 5th button (typically the "Browser Forward" button)
-
-	// The following are not widely supported but are technically possible
-	BUTTON_6 = 2 ** 5,
-	BUTTON_7 = 2 ** 6,
-	BUTTON_8 = 2 ** 7,
-	BUTTON_9 = 2 ** 8,
-	BUTTON_10 = 2 ** 9,
-	BUTTON_11 = 2 ** 10,
-	BUTTON_12 = 2 ** 11,
-	BUTTON_13 = 2 ** 12,
-	BUTTON_14 = 2 ** 13,
-	BUTTON_15 = 2 ** 14,
-	BUTTON_16 = 2 ** 15,
-};
 
 class WindowMouse {
 	onStart: WindowMouseEventHandler | null = null;
@@ -42,7 +12,7 @@ class WindowMouse {
 
 	// Use bitwise OR (|) to combine, e.g.:
 	//   wm.buttons = BUTTON.PRIMARY | BUTTON.SECONDARY;
-	buttons: number = BUTTON.PRIMARY;
+	buttons: number = Button.PRIMARY;
 	suppressContextMenuDuringDrag = true;
 	mouseUpOnPhantomMove = true;
 
@@ -70,7 +40,7 @@ class WindowMouse {
 	#checkMulti(e: MouseEvent) {
 		if (!this.#isClicked(e)) return false;
 		if (!this.#inDrag) return false;
-		this.onButtonChange?.(e);
+		this.onButtonChange?.(e, this);
 		return true;
 	}
 
@@ -85,12 +55,16 @@ class WindowMouse {
 		this.#endAbort = new AbortController();
 
 		if (this.suppressContextMenuDuringDrag) {
-			e.target?.addEventListener("contextmenu", (ee: MouseEvent) => { ee.preventDefault(); }, {signal: this.#endAbort.signal});
-			window.addEventListener("contextmenu", (ee: MouseEvent) => { ee.preventDefault(); }, {signal: this.#endAbort.signal});
+			e.target?.addEventListener("contextmenu", (ee: Event) => {
+				ee.preventDefault();
+			}, {signal: this.#endAbort.signal});
+			window.addEventListener("contextmenu", (ee: Event) => {
+				ee.preventDefault();
+			}, {signal: this.#endAbort.signal});
 		}
-		window.addEventListener("mousemove", this.#move.bind(this), {signal: this.#endAbort.signal});
-		window.addEventListener("mouseup", this.#mouseUp.bind(this), {signal: this.#endAbort.signal});
-		this.onStart?.(e);
+		window.addEventListener("mousemove", (...args) => this.#move(...args), {signal: this.#endAbort.signal});
+		window.addEventListener("mouseup", (...args) => this.#mouseUp(...args), {signal: this.#endAbort.signal});
+		this.onStart?.(e, this);
 	}
 
 	#move(e: MouseEvent) {
@@ -98,7 +72,7 @@ class WindowMouse {
 			this.#mouseUp(e);
 			return;
 		}
-		this.onMove?.(e);
+		this.onMove?.(e, this);
 	}
 
 	#mouseUp(e: MouseEvent) {
@@ -108,8 +82,8 @@ class WindowMouse {
 			return;
 		}
 		this.#inDrag = false;
-		this.onMouseUp?.(e);
-		this.onEnd?.(e);
+		this.onMouseUp?.(e, this);
+		this.onEnd?.(e, this);
 		this.#endAbort.abort();
 	}
 
@@ -127,7 +101,7 @@ class WindowMouse {
 	}
 
 	get dragStartHandler() {
-		return this.#start.bind(this);
+		return (e: MouseEvent) => this.#start(e);
 	}
 
 	get detach() {

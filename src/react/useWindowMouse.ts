@@ -1,14 +1,30 @@
 import {useEffect, useRef} from "react";
-import {WindowMouseHandlers} from "../core/types.ts";
-import WindowMouse, {BUTTON} from "../core/WindowMouse.ts";
+import {WindowMouseHandlers, XY} from "../core/types.ts";
+import WindowMouse from "../core/WindowMouse.ts";
+import {Button} from "../core/enums.ts";
 
-const useWindowMouse = (handlers: WindowMouseHandlers, buttons: number = BUTTON.PRIMARY) => {
+type UseWindowMouseReactProps = {
+	handlers: WindowMouseHandlers;
+	buttons: typeof Button | number;
+};
+
+type UseWindowMouseReactReturn = {
+	dragStartHandler: WindowMouse["dragStartHandler"];
+}
+
+type UseWindowMouseReact = (props: UseWindowMouseReactProps) => UseWindowMouseReactReturn;
+
+const useWindowMouse: UseWindowMouseReact = ({handlers = {}, buttons = Button.PRIMARY}) => {
 	const windowMouseRef = useRef<WindowMouse>(new WindowMouse());
 	useEffect(() => {
-		windowMouseRef.current.setHandlers(handlers);
-		windowMouseRef.buttons = buttons;
-		return () => windowMouseRef.detach();
-	});
+		const windowMouse = windowMouseRef.current = windowMouseRef.current ?? new WindowMouse();
+		windowMouse.setHandlers(handlers);
+		windowMouse.buttons = buttons;
+		return () => {
+			windowMouseRef.current.detach();
+			windowMouseRef.current = null;
+		};
+	}, []);
 	return {dragStartHandler: windowMouseRef.current.dragStartHandler};
 };
 

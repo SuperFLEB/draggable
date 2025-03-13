@@ -192,6 +192,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@rollup/plugin-json@npm:^6.1.0":
+  version: 6.1.0
+  resolution: "@rollup/plugin-json@npm:6.1.0"
+  dependencies:
+    "@rollup/pluginutils": "npm:^5.1.0"
+  peerDependencies:
+    rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
+  peerDependenciesMeta:
+    rollup:
+      optional: true
+  checksum: 10c0/9400c431b5e0cf3088ba2eb2d038809a2b0fb2a84ed004997da85582f48cd64958ed3168893c4f2c8109e38652400ed68282d0c92bf8ec07a3b2ef2e1ceab0b7
+  languageName: node
+  linkType: hard
+
 "@rollup/plugin-multi-entry@npm:^6.0.1":
   version: 6.0.1
   resolution: "@rollup/plugin-multi-entry@npm:6.0.1"
@@ -414,6 +428,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@superfleb/draggable@workspace:."
   dependencies:
+    "@rollup/plugin-json": "npm:^6.1.0"
     "@rollup/plugin-multi-entry": "npm:^6.0.1"
     "@rollup/plugin-terser": "npm:^0.4.4"
     "@rollup/plugin-typescript": "npm:^12.1.2"
@@ -431,7 +446,7 @@ __metadata:
     typescript: "npm:^5.8.2"
     vue: "npm:3.0.0"
   peerDependencies:
-    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
     vue: ^3.0.0
   peerDependenciesMeta:
     react:

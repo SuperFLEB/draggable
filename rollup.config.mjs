@@ -11,7 +11,49 @@ const externals = {
 	"core": [],
 };
 
-const minify = true;
+const minify = false;
+
+const base = (cliArgs) => [
+	{
+		input: "src/index.ts",
+		output: [
+			{
+				dir: "dist",
+				format: "cjs",
+				sourcemap: true,
+				entryFileNames: "index.cjs",
+				exports: "named",
+			},
+			{
+				dir: "dist",
+				format: "esm",
+				sourcemap: true,
+				entryFileNames: "index.mjs",
+			},
+		],
+		external: [],
+		plugins: [
+			typescript({
+				tsconfig: "tsconfig.json",
+				declaration: true,
+				declarationDir: "dist/types",
+				inlineSources: true,
+			}),
+			minify && terser({
+				ecma: "2022",
+				sourceMap: true,
+			})
+		],
+	},
+	{
+		input: `dist/types/index.d.ts`,
+		output: [{file: `dist/index.d.ts`, format: "es"}],
+		plugins: [
+			dts(),
+			del({hook: "buildEnd", verbose: true, targets: `dist/types`})
+		],
+	}
+];
 
 const sub = (feature) => ([
 	{
@@ -52,11 +94,7 @@ const sub = (feature) => ([
 	},
 ]);
 
-export default [
-	...sub("react"),
-	...sub("vue"),
-	...sub("js"),
-	...sub("core"),
+const standalone = () => [
 	{
 		input: "src/js/index.ts",
 		output: {
@@ -91,6 +129,21 @@ export default [
 	{
 		input: `dist/standalone/types/js/index.d.ts`,
 		output: [{file: `dist/standalone/fleb-draggable.d.ts`, format: "es"}],
-		plugins: [dts(), del({hook: "buildEnd", verbose: true, targets: `dist/standalone/types`})],
+		plugins: [
+			dts(),
+			del({hook: "buildEnd", verbose: true, targets: `dist/standalone/types`}),
+		],
 	}
 ];
+
+export default (cliArgs) => {
+	return [
+		...base(cliArgs),
+		...base(cliArgs),
+		...sub("react"),
+		...sub("vue"),
+		...sub("js"),
+		...sub("core"),
+		...standalone(),
+	];
+};

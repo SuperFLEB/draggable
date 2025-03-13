@@ -1,37 +1,31 @@
 import Draggable from "./Draggable.ts";
+import type WindowMouse from "./WindowMouse.ts";
+import {Button} from "./enums.ts";
 
 export type FixedLengthArray<L extends number, T> = [T, ...T[]] & { length: L };
-
-export type WindowMouseState = {
-	isMouseDown?: boolean | null,
-}
-
-export type DraggableState = {
-	dragState?: Movement | null;
-} & WindowMouseState;
 
 export type XY<T = number> = { x: T, y: T };
 
 export type PixelMovement = {
 	// x, y in pixels relative to starting x and y in pixels (spx, spy)
-	pxx: number;
-	pxy: number;
+	pxX: number;
+	pxY: number;
 
 	// Starting x, y in pixels. What was passed in on initialization divided by pixelSize
-	pxsx: number;
-	pxsy: number;
+	pxStartX: number;
+	pxStartY: number;
 
 	// Pixel size (multiplier) used to calculate pixels
-	psx: number;
-	psy: number;
+	pixelSizeX: number;
+	pixelSizeY: number;
 
 	// Pixel delta/distance since last event
-	pxdx: number;
-	pxdy: number;
+	pxDeltaX: number;
+	pxDeltaY: number;
 
 	// Client (window, absolute) x, y
-	pxcx: number | null;
-	pxcy: number | null;
+	pxClientX: number | null;
+	pxClientY: number | null;
 }
 
 export type Movement = PixelMovement & {
@@ -40,24 +34,25 @@ export type Movement = PixelMovement & {
 	y: number;
 
 	// Starting x, y. What was passed in on initialization
-	sx: number;
-	sy: number;
+	startX: number;
+	startY: number;
 
 	// Delta/distance since last event
-	dx: number;
-	dy: number;
+	deltaX: number;
+	deltaY: number;
 }
 
-export type Clicked = {
+export type DragExtras = {
 	buttons: number,
-	isClicked: FixedLengthArray<16, boolean>
+	buttonStates: FixedLengthArray<16, boolean>
+	inDrag: boolean;
 };
 
-export type DragState = Movement & Clicked;
+export type DragState = Movement & DragExtras;
 
 export type {Movement as default};
-export type DraggableEventHandler = (this: Draggable, e: MouseEvent, dragState: Movement) => void;
-export type DraggableHandler = (this: Draggable, e: MouseEvent | null, dragState: Movement) => void;
+export type DraggableEventHandler = (this: Draggable, e: MouseEvent, dragState: DragState, instance: Draggable) => void;
+export type DraggableHandler = (this: Draggable, e: MouseEvent | null, dragState: DragState, instance: Draggable) => void;
 export type DraggableHandlers = {
 	// Intercept before start to, e.g., transform the coordinates
 	beforeStart?: DraggableEventHandler | null;
@@ -76,6 +71,12 @@ export type DraggableHandlers = {
 	// On any update
 	onUpdate?: DraggableHandler | null;
 }
+export type UseDraggableOptions = {
+	buttons: number | typeof Button;
+	startXy: XY;
+	pixelSize: XY;
+	preserveState: boolean;
+}
 
 // Includes the onStateChange handler for use by adapters.
 // If you're not writing an adapter, use "onUpdate". It's the same thing.
@@ -83,8 +84,8 @@ export type AllDraggableHandlers = DraggableHandlers & {
 	onStateChange?: DraggableHandler;
 };
 
-export type WindowMouseEventHandler = ((e: MouseEvent) => void);
-export type WindowMouseHandler = ((e: MouseEvent | null) => void);
+export type WindowMouseEventHandler = ((e: MouseEvent, instance: WindowMouse) => void);
+export type WindowMouseHandler = ((e: MouseEvent | null, instance: WindowMouse) => void);
 export type WindowMouseHandlers = {
 	// Handler to run when the mouse button goes down.
 	onStart?: WindowMouseEventHandler;

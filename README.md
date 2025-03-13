@@ -1,9 +1,10 @@
 # @superfleb/draggable
 
+*This document is in progress and may be missing some options and use cases, or be straight-up wrong.*
+
+
 Draggable element handlers for Vue, React, and Vanilla JS. Uses move/mouseUp events on the window
 to prevent drag loss from fast cursor movement.
-
-*This document is in progress and may be missing some options and use cases.*
 
 Example code is TypeScript, but the library does not necessarily require TypeScript.
 
@@ -33,7 +34,7 @@ Vue interface, including internal state management and exposure of a reactive st
 ```vue
 <script setup>
 	import useWindowMouse from "@superfleb/draggable/vue";
-	import BUTTON from "@superfleb/draggable/core/WindowMouse";
+	import Button from "@superfleb/draggable/core/WindowMouse";
 
 	const styleRef: ref<CSSProperties>({});
 	const dragStartHandler = useDraggable({
@@ -95,7 +96,8 @@ Vue interface, including internal state management and exposure of a reactive st
 	/* useWindowMouse example */
 	import useWindowMouse from "@superfleb/draggable/vue";
 
-	const styleRef: ref<CSSProperties>({});
+	const styleRef: ref<CSSProperties>
+	({});
 	const {dragStartHandler} = useWindowMouse({
 		// Handler run when the drag begins.
 		onStart: (e: MouseEvent) => { /* ... */
@@ -112,7 +114,7 @@ Vue interface, including internal state management and exposure of a reactive st
 		// Handler run when the mouse button is released. Does not trigger when the drag ends because the component is unmounted.
 		onMouseUp: (e: MouseEvent) => { /* ... */
 		},
-	}, BUTTON.primary);
+	}, Button.primary);
 </script>
 <template>
 	<div class="draggable-box" style="styleRef"></div>

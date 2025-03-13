@@ -1,5 +1,6 @@
+import {MouseEvent} from "react";
+import WindowMouse from "./WindowMouse.ts";
 import {
-	Clicked,
 	DraggableEventHandler,
 	DraggableHandler,
 	DraggableHandlers,
@@ -9,11 +10,11 @@ import {
 	PixelMovement,
 	XY
 } from "./types.ts";
-import WindowMouse from "./WindowMouse.ts";
+import {Button} from "./enums.ts";
 
 const handlerNames: (keyof DraggableHandlers)[] = ["beforeStart", "onStart", "beforeMove", "onMove", "beforeEnd", "onEnd", "onUpdate"] as const;
 
-const xyOf = (xy: XY) => ({x: xy.x, y: xy.y});
+const xyFrom = (obj: any, keys: { x: string, y: string } = {x: "x", y: "y"}): XY => ({x: obj[keys.x], y: obj[keys.y]});
 
 export const enum UnitType {
 	PIXEL = "PIXEL",
@@ -24,77 +25,52 @@ function pxToMovement(pxMovement: PixelMovement): Movement {
 	return {
 		...pxMovement,
 
-		x: pxMovement.pxx * pxMovement.psx,
-		y: pxMovement.pxy * pxMovement.psy,
+		x: pxMovement.pxX * pxMovement.pixelSizeX,
+		y: pxMovement.pxY * pxMovement.pixelSizeY,
 
-		sx: pxMovement.pxsx * pxMovement.psx,
-		sy: pxMovement.pxsy * pxMovement.psy,
+		startX: pxMovement.pxStartX * pxMovement.pixelSizeX,
+		startY: pxMovement.pxStartY * pxMovement.pixelSizeY,
 
-		dx: pxMovement.pxdx * pxMovement.psx,
-		dy: pxMovement.pxdy * pxMovement.psy,
+		deltaX: pxMovement.pxDeltaX * pxMovement.pixelSizeX,
+		deltaY: pxMovement.pxDeltaY * pxMovement.pixelSizeY,
 	};
 }
 
-function newMovement(starting: XY = {x: 0, y: 0}, unit: UnitType = UnitType.VALUE, pixelSize: XY | Movement = {
+function newMovement(starting: XY = {x: 0, y: 0}, unit: UnitType = UnitType.VALUE, pixelSize: XY = {
 	x: 1,
 	y: 1
 }): Movement {
 	const isValue = unit === UnitType.VALUE;
+
 	// Get pixel size either from a passed-in Movement or an XY
-	const pixelSizeResolved = ("psx" in pixelSize) ? {x: pixelSize.psx, y: pixelSize.psy} : pixelSize;
 	const startingPx: XY = {
-		x: starting.x / (isValue ? 1 : pixelSizeResolved.x),
-		y: starting.y / (isValue ? 1 : pixelSizeResolved.y),
-	};
-	const pxMovement = {
-		pxx: startingPx.x,
-		pxy: startingPx.y,
-
-		pxsx: startingPx.x,
-		pxsy: startingPx.y,
-
-		psx: pixelSizeResolved.x,
-		psy: pixelSizeResolved.y,
-
-		pxdx: 0,
-		pxdy: 0,
-
-		pxcx: null,
-		pxcy: null,
+		x: starting.x / (isValue ? 1 : pixelSize.x),
+		y: starting.y / (isValue ? 1 : pixelSize.y),
 	};
 
-	return pxToMovement(pxMovement);
-}
+	const pxMovement: PixelMovement = {
+		pxX: startingPx.x,
+		pxY: startingPx.y,
 
-function updateMovement(movement: Movement, clientXY: XY): Movement {
-	const delta = {
-		x: movement.pxcx === null ? 0 : clientXY.x - movement.pxcx,
-		y: movement.pxcy === null ? 0 : clientXY.y - movement.pxcy,
-	};
+		pxStartX: startingPx.x,
+		pxStartY: startingPx.y,
 
-	const pxMovement = {
-		pxx: movement.pxx + delta.x,
-		pxy: movement.pxy + delta.y,
+		pixelSizeX: pixelSize.x,
+		pixelSizeY: pixelSize.y,
 
-		pxsx: movement.pxsx,
-		pxsy: movement.pxsy,
+		pxDeltaX: 0,
+		pxDeltaY: 0,
 
-		psx: movement.psx,
-		psy: movement.psy,
-
-		pxdx: delta.x,
-		pxdy: delta.y,
-
-		pxcx: clientXY.x,
-		pxcy: clientXY.y,
+		pxClientX: null,
+		pxClientY: null,
 	};
 
 	return pxToMovement(pxMovement);
 }
 
-function getClicked(buttons: number = 0): Clicked {
+function getButtonStates(buttons: number = 0): { buttons: number, buttonStates: FixedLengthArray<16, boolean> } {
 	return {
-		buttons, isClicked: Array.from(function* () {
+		buttons, buttonStates: Array.from(function* () {
 			let bit = 0;
 			// tslint:disable-next-line:no-bitwise
 			while (bit < 16) yield !!(buttons & (2 ** bit++));
@@ -105,6 +81,7 @@ function getClicked(buttons: number = 0): Clicked {
 class Draggable {
 	constructor() {
 		this.#windowMouse = new WindowMouse();
+
 	}
 
 	// External event callbacks
@@ -117,15 +94,18 @@ class Draggable {
 	onEnd: DraggableHandler | null = null;
 	onUpdate: DraggableHandler | null = null;
 
-	// This is a redundant event specifically to be bound to by adapters.
-	// Don't pass this to your consumers. It's all yours. Tell them to use onUpdate.
-	onStateChange: DraggableHandler | null = null;
+	// These are redundant events specifically to be used by adapters.
+	// If you're not writing an adapter, don't use these.
+	adapterBeforeStart: DraggableEventHandler | null = null;
+	adapterOnUpdate: DraggableHandler | null = null;
+	adapterOnEnd: DraggableHandler | null = null;
 
-	#setHandlers(handlers: DraggableHandlers) {
+	#setHandlers(handlers: DraggableHandlers, clearUnset = true) {
 		for (const handlerName of handlerNames) {
 			if (handlers[handlerName]) {
-				// It's okay, TypeScript. I've got this under control.
 				(this as any)[handlerName] = handlers[handlerName];
+			} else if (clearUnset) {
+				(this as any)[handlerName] = null;
 			}
 		}
 	}
@@ -133,59 +113,99 @@ class Draggable {
 	// Options
 	enabled = true;
 	pixelSize: XY = {x: 1, y: 1};
-
-	// buttons: number = BUTTON.PRIMARY;
-	get buttons(): number {
-		return this.#windowMouse.buttons;
-	}
-
-	set buttons(value: number) {
-		this.#windowMouse.buttons = value;
-	}
+	buttons: Button.PRIMARY;
 
 	// Private properties
 
 	#windowMouse: WindowMouse;
 	#state: DragState = {
-		...newMovement({x: 0, y: 0}),
+		...newMovement({x: 0, y: 0}, UnitType.VALUE, {x: 1, y: 1}),
 		buttons: 0,
-		isClicked: new Array(16).fill(false) as FixedLengthArray<16, boolean>
+		buttonStates: new Array(16).fill(false) as FixedLengthArray<16, boolean>,
+		inDrag: false,
 	};
 
-	#updateState(...states: Partial<DragState>[]) {
-		for (const nextState of states) {
-			this.#state = {...this.#state, ...nextState};
-		}
-		this.onStateChange?.(null, this.state);
-		this.onUpdate?.(null, this.state);
+	#getNextMovement(clientXY: XY): Movement {
+		const state = this.#state;
+		const delta = {
+			x: state.pxClientX === null ? 0 : clientXY.x - state.pxClientX,
+			y: state.pxClientY === null ? 0 : clientXY.y - state.pxClientY,
+		};
+
+		const pxMovement: PixelMovement = {
+			pxX: state.pxX + delta.x,
+			pxY: state.pxY + delta.y,
+
+			pxStartX: state.pxStartX,
+			pxStartY: state.pxStartY,
+
+			pixelSizeX: this.pixelSize.x,
+			pixelSizeY: this.pixelSize.y,
+
+			pxDeltaX: delta.x,
+			pxDeltaY: delta.y,
+
+			pxClientX: clientXY.x,
+			pxClientY: clientXY.y,
+		};
+
+		return pxToMovement(pxMovement);
+	}
+
+	#updateState(e: MouseEvent) {
+		const nextMovement = this.#getNextMovement({x: e.clientX, y: e.clientY});
+		const buttonStates = getButtonStates(e.buttons);
+		this.#state = {
+			...nextMovement,
+			...buttonStates,
+			inDrag: this.#windowMouse.inDrag,
+		};
+		this.adapterOnUpdate?.(null, this.#state, this);
+		this.onUpdate?.(null, this.#state, this);
+	}
+
+	#resetState(movement: Partial<DragState>) {
+		this.#state = {
+			...this.#state,
+			...movement,
+		};
+		this.adapterOnUpdate?.(null, this.#state, this);
+		this.onUpdate?.(null, this.#state, this);
 	}
 
 	#dragStartHandler(e: MouseEvent) {
 		if (!this.enabled) return;
 		if (this.#windowMouse.checkMulti(e)) return;
-		this.#windowMouse.onButtonChange = this.#move.bind(this);
-		this.#windowMouse.onMove = this.#move.bind(this);
-		this.#windowMouse.onEnd = this.#end.bind(this);
+		this.#windowMouse.onButtonChange = (ee: MouseEvent) => this.#move(ee);
+		this.#windowMouse.onMove = (ee: MouseEvent) => this.#move(ee);
+		this.#windowMouse.onEnd = (ee: MouseEvent) => this.#end(ee);
 		this.#windowMouse.dragStartHandler(e);
 		this.#start(e);
 	}
 
 	#start(e: MouseEvent) {
-		this.#updateState(updateMovement(this.state, {x: e.clientX, y: e.clientY}), getClicked(e.buttons));
-		this.beforeStart?.(e, this.state);
-		this.onStart?.(e, this.state);
+		this.#updateState(e);
+		this.adapterBeforeStart?.(e, this.#state, this);
+		this.beforeStart?.(e, this.#state, this);
+		this.onStart?.(e, this.#state, this);
 	}
 
 	#move(e: MouseEvent) {
-		this.#updateState(updateMovement(this.state, {x: e.clientX, y: e.clientY}), getClicked(e.buttons));
-		this.beforeMove?.(e, this.state);
-		this.onMove?.(e, this.state);
+		this.#updateState(e);
+		this.beforeMove?.(e, this.#state, this);
+		this.onMove?.(e, this.#state, this);
 	}
 
 	#end(e: MouseEvent | null) {
-		if (e) this.#updateState(updateMovement(this.state, {x: e.clientX, y: e.clientY}), getClicked(e?.buttons ?? 0));
-		this.beforeEnd?.(e, this.state);
-		this.onEnd?.(e, this.state);
+		this.#resetState({pxClientX: null, pxClientY: null, inDrag: false});
+		this.beforeEnd?.(e, this.#state, this);
+		this.onEnd?.(e, this.#state, this);
+		this.adapterOnEnd?.(e, this.#state, this);
+	}
+
+	#fireUpdateEvent(e: MouseEvent | null = null) {
+		this.adapterOnUpdate?.(null, this.#state, this);
+		this.onUpdate?.(null, this.#state, this);
 	}
 
 	#detach() {
@@ -199,12 +219,19 @@ class Draggable {
 	}
 
 	get xy(): XY {
-		return xyOf(this.#state);
+		return xyFrom(this.#state);
 	}
 
 	set xy(xy: XY) {
-		const newMvmt = newMovement(xy, UnitType.VALUE, this.#state);
-		this.#updateState(newMvmt);
+		this.#resetState(newMovement(xy, UnitType.VALUE, xyFrom(this.#state, {x: "pixelSizeX", y: "pixelSizeY"})));
+	}
+
+	get pxXy() {
+		return {x: this.#state.pxX, y: this.#state.pxY};
+	}
+
+	set pxXy(xy: XY) {
+		this.#resetState(newMovement(xy, UnitType.PIXEL, xyFrom(this.#state, {x: "pxSizeX", y: "pxSizeY"})));
 	}
 
 	// Method accessors (read-only)
@@ -214,7 +241,7 @@ class Draggable {
 	}
 
 	get dragStartHandler() {
-		return this.#dragStartHandler.bind(this);
+		return (e: MouseEvent) => this.#dragStartHandler(e);
 	}
 
 	get setHandlers() {
