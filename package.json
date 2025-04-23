@@ -1,6 +1,6 @@
 {
   "name": "@superfleb/draggable",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "description": "Draggable elements for Vue, React, and JS",
   "type": "module",
   "license": "UNLICENSED",

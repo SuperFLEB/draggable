@@ -53,36 +53,35 @@ export type DragState = Movement & DragExtras;
 export type {Movement as default};
 export type DraggableEventHandler = (this: Draggable, e: MouseEvent, dragState: DragState, instance: Draggable) => void;
 export type DraggableHandler = (this: Draggable, e: MouseEvent | null, dragState: DragState, instance: Draggable) => void;
-export type DraggableHandlers = {
-	// Intercept before start to, e.g., transform the coordinates
-	beforeStart?: DraggableEventHandler | null;
-	// Handler for when the drag starts, on mousedown.
-	onStart?: DraggableEventHandler | null;
-	// Intercept before move to, e.g., transform the coordinates
-	beforeMove?: DraggableEventHandler | null;
-	// Handler for when the mouse button is down and the mouse moves, mid-drag.
-	onMove?: DraggableEventHandler | null;
-	// Intercept before end to, e.g., transform the coordinates
-	beforeEnd?: DraggableHandler | null;
-	// Handler for when the drag ends, either due to mouseup or the component unmounting. Event may be null in the case of an unmount.
-	onEnd?: DraggableHandler | null;
-	// Handler for when the drag ends due to mouseup. Not run when the component unmounts.
-	onMouseUp?: DraggableEventHandler | null;
-	// On any update
-	onUpdate?: DraggableHandler | null;
-}
+
+const draggableEventHandlerEventNames = Object.freeze(["start", "move", "mouseUp"] as const);
+const draggableHandlerEventNames = Object.freeze(["end", "update", "change", "boundsFail"] as const);
+export const draggableEventNames = Object.freeze([...draggableEventHandlerEventNames, ...draggableHandlerEventNames]);
+export const draggableEventPrefixes = Object.freeze(["before", "on", "adapterBefore", "adapterOn"] as const);
+export const draggableHandlerNames = Object.freeze(draggableEventPrefixes.flatMap(
+	prefix => draggableEventNames.map(
+		name => `${prefix}${name[0].toUpperCase() + name.slice(1)}` as DraggableHandlerMethodName
+	)
+));
+
+export type DraggableEventHandlerEventName = typeof draggableEventHandlerEventNames[number];
+export type DraggableHandlerEventName = typeof draggableHandlerEventNames[number];
+export type HandlerPrefix = typeof draggableEventPrefixes[number];
+
+type DraggableHandlerMethodName = `${HandlerPrefix}${Capitalize<DraggableHandlerEventName>}`;
+type DraggableEventHandlerMethodName = `${HandlerPrefix}${Capitalize<DraggableEventHandlerEventName>}`;
+export type DraggableHandlerName = DraggableHandlerMethodName | DraggableEventHandlerMethodName;
+export type DraggableHandlers =
+	{ [n in DraggableHandlerMethodName]: DraggableHandler }
+	& { [n in DraggableEventHandlerMethodName]: DraggableEventHandler };
+export type WithOptionalDraggableHandlers = { [k in keyof DraggableHandlers]: DraggableHandlers[k] | null };
+
 export type UseDraggableOptions = {
 	buttons: number | typeof Button;
 	startXy: XY;
 	pixelSize: XY;
 	preserveState: boolean;
 }
-
-// Includes the onStateChange handler for use by adapters.
-// If you're not writing an adapter, use "onUpdate". It's the same thing.
-export type AllDraggableHandlers = DraggableHandlers & {
-	onStateChange?: DraggableHandler;
-};
 
 export type WindowMouseEventHandler = ((e: MouseEvent, instance: WindowMouse) => void);
 export type WindowMouseHandler = ((e: MouseEvent | null, instance: WindowMouse) => void);
@@ -95,4 +94,15 @@ export type WindowMouseHandlers = {
 	onEnd?: WindowMouseEventHandler;
 	// Handler to run when the mouse button is released. Does not trigger when the drag ends because the component is unmounted.
 	onMouseUp?: WindowMouseEventHandler;
+}
+
+export const enum UnitType {
+	PIXEL = "PIXEL",
+	VALUE = "VALUE",
+};
+
+export type Limits = {
+	x: [number, number];
+	y: [number, number];
+	unit: UnitType;
 }

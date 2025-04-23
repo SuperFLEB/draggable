@@ -1,5 +1,6 @@
 import {WindowMouseEventHandler, WindowMouseHandler, WindowMouseHandlers} from "./types.ts";
 import {Button} from "./enums.ts";
+import {addTouchEventInterpreters, mouseEventFromTouchEvent} from "./mouseEventFromTouchEvent.ts";
 
 const handlerNames: (keyof WindowMouseHandlers)[] = ["onStart", "onMove", "onMouseUp", "onEnd"] as const;
 
@@ -44,9 +45,11 @@ class WindowMouse {
 		return true;
 	}
 
-	#start(e: MouseEvent) {
-		if (!this.#isClicked(e)) return;
-		this.#checkMulti(e);
+	#start(e: MouseEvent | TouchEvent) {
+		if (e instanceof MouseEvent) {
+			if (!this.#isClicked(e)) return;
+			if (this.#checkMulti(e)) return;
+		}
 
 		if (this.inDrag) return;
 		this.#inDrag = true;
@@ -62,13 +65,21 @@ class WindowMouse {
 				ee.preventDefault();
 			}, {signal: this.#endAbort.signal});
 		}
+
+		if (e instanceof TouchEvent) {
+			const mouseEvent = mouseEventFromTouchEvent(e);
+			if (!mouseEvent) return;
+			e = mouseEvent;
+			addTouchEventInterpreters(window, this.#endAbort.signal);
+		}
+
 		window.addEventListener("mousemove", (...args) => this.#move(...args), {signal: this.#endAbort.signal});
 		window.addEventListener("mouseup", (...args) => this.#mouseUp(...args), {signal: this.#endAbort.signal});
-		this.onStart?.(e, this);
+		this.onStart?.(e as MouseEvent, this);
 	}
 
 	#move(e: MouseEvent) {
-		if (this.mouseUpOnPhantomMove && !this.#isClicked(e)) {
+		if (e instanceof MouseEvent && this.mouseUpOnPhantomMove && !this.#isClicked(e)) {
 			this.#mouseUp(e);
 			return;
 		}
@@ -77,7 +88,7 @@ class WindowMouse {
 
 	#mouseUp(e: MouseEvent) {
 		// tslint:disable-next-line:no-bitwise
-		if (e.buttons & this.buttons) {
+		if (e instanceof MouseEvent && e.buttons & this.buttons) {
 			// One of our requested buttons is still being clicked. Do not end.
 			return;
 		}

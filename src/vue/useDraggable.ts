@@ -8,7 +8,7 @@ export type UseDraggableVueReturn = {
 	stateRef: Ref<DragState>
 }
 
-export type UseDraggableVue = (props?: Partial<DraggableHandlers>, options?: Partial<UseDraggableOptions>) => UseDraggableVueReturn;
+export type UseDraggableVue = (handlers?: Partial<DraggableHandlers>, options?: Partial<UseDraggableOptions>) => UseDraggableVueReturn;
 
 const useDraggable: UseDraggableVue = (handlers = {}, options = {}) => {
 	const {
@@ -33,10 +33,10 @@ const useDraggable: UseDraggableVue = (handlers = {}, options = {}) => {
 	onMounted(() => {
 		draggableRef.value.setHandlers(handlers);
 		draggableRef.value.adapterOnUpdate = (_: null, newState: DragState) => {
-			stateRef.value = {...newState};
+			Object.assign(stateRef.value, {...newState});
 		};
 		draggableRef.value.xy = startXy;
-		stateRef.value = {...draggableRef.value.state};
+		Object.assign(stateRef.value, {...draggableRef.value.state});
 		draggableRef.value.buttons = buttons;
 	});
 	onUnmounted(() => {

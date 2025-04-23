@@ -2,24 +2,62 @@ import {MouseEvent} from "react";
 import WindowMouse from "./WindowMouse.ts";
 import {
 	DraggableEventHandler,
+	DraggableEventHandlerEventName,
 	DraggableHandler,
+	DraggableHandlerEventName,
+	draggableHandlerNames,
 	DraggableHandlers,
 	DragState,
 	FixedLengthArray,
+	Limits,
 	Movement,
 	PixelMovement,
+	UnitType,
+	WithOptionalDraggableHandlers,
 	XY
 } from "./types.ts";
 import {Button} from "./enums.ts";
+import {mouseEventFromTouchEvent} from "./mouseEventFromTouchEvent.ts";
 
-const handlerNames: (keyof DraggableHandlers)[] = ["beforeStart", "onStart", "beforeMove", "onMove", "beforeEnd", "onEnd", "onUpdate"] as const;
+const xyOf = (obj: any, keys: { x: string, y: string } = {x: "x", y: "y"}): XY => ({x: obj[keys.x], y: obj[keys.y]});
 
-const xyFrom = (obj: any, keys: { x: string, y: string } = {x: "x", y: "y"}): XY => ({x: obj[keys.x], y: obj[keys.y]});
+const newDefaultPixelMovement = (): PixelMovement => ({
+	// x, y in pixels relative to starting x and y in pixels (spx, spy)
+	pxX: 0,
+	pxY: 0,
 
-export const enum UnitType {
-	PIXEL = "PIXEL",
-	VALUE = "VALUE",
-};
+	// Starting x, y in pixels. What was passed in on initialization divided by pixelSize
+	pxStartX: 0,
+	pxStartY: 0,
+
+	// Pixel size (multiplier) used to calculate pixels
+	pixelSizeX: 1,
+	pixelSizeY: 1,
+
+	// Pixel delta/distance since last event
+	pxDeltaX: 0,
+	pxDeltaY: 0,
+
+	// Client (window, absolute) x, y
+	pxClientX: null,
+	pxClientY: null,
+})
+
+const newDefaultMovement = (): Movement => ({
+	// x, y relative to starting x and y (sx, sy)
+	x: 0,
+	y: 0,
+
+	// Starting x, y. What was passed in on initialization
+	startX: 0,
+	startY: 0,
+
+	// Delta/distance since last event
+	deltaX: 0,
+	deltaY: 0,
+
+	...newDefaultPixelMovement(),
+});
 
 function pxToMovement(pxMovement: PixelMovement): Movement {
 	return {
@@ -36,38 +74,6 @@ function pxToMovement(pxMovement: PixelMovement): Movement {
 	};
 }
 
-function newMovement(starting: XY = {x: 0, y: 0}, unit: UnitType = UnitType.VALUE, pixelSize: XY = {
-	x: 1,
-	y: 1
-}): Movement {
-	const isValue = unit === UnitType.VALUE;
-
-	// Get pixel size either from a passed-in Movement or an XY
-	const startingPx: XY = {
-		x: starting.x / (isValue ? 1 : pixelSize.x),
-		y: starting.y / (isValue ? 1 : pixelSize.y),
-	};
-
-	const pxMovement: PixelMovement = {
-		pxX: startingPx.x,
-		pxY: startingPx.y,
-
-		pxStartX: startingPx.x,
-		pxStartY: startingPx.y,
-
-		pixelSizeX: pixelSize.x,
-		pixelSizeY: pixelSize.y,
-
-		pxDeltaX: 0,
-		pxDeltaY: 0,
-
-		pxClientX: null,
-		pxClientY: null,
-	};
-
-	return pxToMovement(pxMovement);
-}
-
 function getButtonStates(buttons: number = 0): { buttons: number, buttonStates: FixedLengthArray<16, boolean> } {
 	return {
 		buttons, buttonStates: Array.from(function* () {
@@ -78,30 +84,53 @@ function getButtonStates(buttons: number = 0): { buttons: number, buttonStates: 
 	};
 }
 
-class Draggable {
+class Draggable implements WithOptionalDraggableHandlers {
 	constructor() {
 		this.#windowMouse = new WindowMouse();
-
 	}
 
-	// External event callbacks
+	// Mouse event handlers
+	beforeStart: null | DraggableEventHandler = null;
+	onStart: null | DraggableEventHandler = null;
+	// Note that "move" events only trigger on during-drag moves and not on initial click or start. If you need both
+	// (you often will), use "Change" instead.
+	beforeMove: null | DraggableEventHandler = null;
+	onMove: null | DraggableEventHandler = null;
+	beforeEnd: null | DraggableHandler = null;
+	onEnd: null | DraggableHandler = null;
+	beforeMouseUp: null | DraggableEventHandler = null;
+	onMouseUp: null | DraggableEventHandler = null;
 
-	beforeStart: DraggableEventHandler | null = null;
-	onStart: DraggableEventHandler | null = null;
-	beforeMove: DraggableEventHandler | null = null;
-	onMove: DraggableEventHandler | null = null;
-	beforeEnd: DraggableHandler | null = null;
-	onEnd: DraggableHandler | null = null;
-	onUpdate: DraggableHandler | null = null;
+	// State event handlers
+	beforeBoundsFail: null | DraggableHandler = null;
+	onBoundsFail: null | DraggableHandler = null;
+	// "Change" events only trigger as the result of an interactive action, not a property set.
+	// Prefer "change" over update, as change only happens once per action, while "update" happens every time the
+	// state changes, even due to handler side-effects.
+	beforeChange: null | DraggableHandler = null;
+	onChange: null | DraggableHandler = null;
+	beforeUpdate: null | DraggableHandler = null;
+	onUpdate: null | DraggableHandler = null;
 
-	// These are redundant events specifically to be used by adapters.
-	// If you're not writing an adapter, don't use these.
-	adapterBeforeStart: DraggableEventHandler | null = null;
-	adapterOnUpdate: DraggableHandler | null = null;
-	adapterOnEnd: DraggableHandler | null = null;
+	// Redundant "adapter" events are for use in adapters
+	adapterBeforeStart: null | DraggableEventHandler = null;
+	adapterOnStart: null | DraggableEventHandler = null;
+	adapterBeforeMove: null | DraggableEventHandler = null;
+	adapterOnMove: null | DraggableEventHandler = null;
+	adapterBeforeMouseUp: null | DraggableEventHandler = null;
+	adapterOnMouseUp: null | DraggableEventHandler = null;
+	adapterBeforeEnd: null | DraggableHandler = null;
+	adapterOnEnd: null | DraggableHandler = null;
+
+	adapterBeforeChange: null | DraggableHandler = null;
+	adapterOnChange: null | DraggableHandler = null;
+	adapterBeforeUpdate: null | DraggableHandler = null;
+	adapterOnUpdate: null | DraggableHandler = null;
+	adapterBeforeBoundsFail: null | DraggableHandler = null;
+	adapterOnBoundsFail: null | DraggableHandler = null;
 
 	#setHandlers(handlers: DraggableHandlers, clearUnset = true) {
-		for (const handlerName of handlerNames) {
+		for (const handlerName of draggableHandlerNames) {
 			if (handlers[handlerName]) {
 				(this as any)[handlerName] = handlers[handlerName];
 			} else if (clearUnset) {
@@ -112,18 +141,61 @@ class Draggable {
 
 	// Options
 	enabled = true;
-	pixelSize: XY = {x: 1, y: 1};
-	buttons: Button.PRIMARY;
+	#pixelSize: XY = {x: 1, y: 1};
+	#limit: XY<number> & { unit: UnitType } = {x: Infinity, y: Infinity, unit: UnitType.VALUE};
+	buttons: number = Button.PRIMARY;
 
 	// Private properties
-
 	#windowMouse: WindowMouse;
 	#state: DragState = {
-		...newMovement({x: 0, y: 0}, UnitType.VALUE, {x: 1, y: 1}),
+		...newDefaultMovement(),
 		buttons: 0,
 		buttonStates: new Array(16).fill(false) as FixedLengthArray<16, boolean>,
 		inDrag: false,
 	};
+
+	#events(names: (DraggableEventHandlerEventName | DraggableHandlerEventName)[], initiatingEvent: MouseEvent | null) {
+		const prefixes = ["adapterBefore", "before", "adapterOn", "on"] as const;
+		for (const prefix of prefixes) {
+			for (const name of names) {
+				const prefixed = prefix + name[0].toUpperCase() + name.slice(1) as keyof DraggableHandlers;
+				if (prefixed in this && typeof this[prefixed] === "function") {
+					this[prefixed](initiatingEvent, this.#state, this);
+				}
+			}
+		}
+	}
+
+	#xyToNewMovement(xy: XY = {x: 0, y: 0}, startingUnit: UnitType = UnitType.VALUE): Movement {
+		const startingPx: XY = this.#resolveToUnits(xy, startingUnit, UnitType.PIXEL);
+		const pxMovement: PixelMovement = {
+			...newDefaultPixelMovement(),
+			...xy,
+
+			pxX: startingPx.x,
+			pxY: startingPx.y,
+
+			pxStartX: startingPx.x,
+			pxStartY: startingPx.y,
+
+			pixelSizeX: this.#pixelSize.x,
+			pixelSizeY: this.#pixelSize.y,
+		};
+		return pxToMovement(pxMovement);
+	}
+
+	#resolveToUnits(xy: XY, unitIn: UnitType, unitOut: UnitType = UnitType.VALUE): XY {
+		if (unitIn === unitOut) return xyOf(xy);
+		const size = {x: this.#state.pixelSizeX, y: this.state.pixelSizeY};
+		const factor: XY = (unitIn === UnitType.VALUE) ? size : {x: 1 / size.x, y: 1 / size.y};
+		return {x: xy.x * factor.x, y: xy.y * factor.y};
+	}
+
+	#boundsCheck(movement: Movement) {
+		if (movement.x < this.#limit.x[0] || movement.x > this.#limit.y) {
+
+		}
+	}
 
 	#getNextMovement(clientXY: XY): Movement {
 		const state = this.#state;
@@ -139,8 +211,8 @@ class Draggable {
 			pxStartX: state.pxStartX,
 			pxStartY: state.pxStartY,
 
-			pixelSizeX: this.pixelSize.x,
-			pixelSizeY: this.pixelSize.y,
+			pixelSizeX: this.#pixelSize.x,
+			pixelSizeY: this.#pixelSize.y,
 
 			pxDeltaX: delta.x,
 			pxDeltaY: delta.y,
@@ -160,8 +232,7 @@ class Draggable {
 			...buttonStates,
 			inDrag: this.#windowMouse.inDrag,
 		};
-		this.adapterOnUpdate?.(null, this.#state, this);
-		this.onUpdate?.(null, this.#state, this);
+		this.#events(["update"], e);
 	}
 
 	#resetState(movement: Partial<DragState>) {
@@ -169,43 +240,38 @@ class Draggable {
 			...this.#state,
 			...movement,
 		};
-		this.adapterOnUpdate?.(null, this.#state, this);
-		this.onUpdate?.(null, this.#state, this);
+		this.#events(["change", "update"], null);
 	}
 
-	#dragStartHandler(e: MouseEvent) {
+	#dragStartHandler(e: MouseEvent | TouchEvent) {
 		if (!this.enabled) return;
-		if (this.#windowMouse.checkMulti(e)) return;
+		if (e instanceof MouseEvent && this.#windowMouse.checkMulti(e)) return;
+
+		const mouseEvent = (e instanceof TouchEvent) ? mouseEventFromTouchEvent(e) : e as MouseEvent;
+		if (!mouseEvent) throw new Error("Unable to get mouse event from event given to dragStartHandler");
+
 		this.#windowMouse.onButtonChange = (ee: MouseEvent) => this.#move(ee);
 		this.#windowMouse.onMove = (ee: MouseEvent) => this.#move(ee);
 		this.#windowMouse.onEnd = (ee: MouseEvent) => this.#end(ee);
+		this.#windowMouse.onMouseUp = (ee: MouseEvent) => this.#events(["mouseUp"], ee);
 		this.#windowMouse.dragStartHandler(e);
-		this.#start(e);
+		this.#start(mouseEvent);
 	}
 
 	#start(e: MouseEvent) {
 		this.#updateState(e);
-		this.adapterBeforeStart?.(e, this.#state, this);
-		this.beforeStart?.(e, this.#state, this);
-		this.onStart?.(e, this.#state, this);
+		this.#events(["start", "change"], e);
 	}
 
 	#move(e: MouseEvent) {
+
 		this.#updateState(e);
-		this.beforeMove?.(e, this.#state, this);
-		this.onMove?.(e, this.#state, this);
+		this.#events(["move", "change"], e);
 	}
 
 	#end(e: MouseEvent | null) {
 		this.#resetState({pxClientX: null, pxClientY: null, inDrag: false});
-		this.beforeEnd?.(e, this.#state, this);
-		this.onEnd?.(e, this.#state, this);
-		this.adapterOnEnd?.(e, this.#state, this);
-	}
-
-	#fireUpdateEvent(e: MouseEvent | null = null) {
-		this.adapterOnUpdate?.(null, this.#state, this);
-		this.onUpdate?.(null, this.#state, this);
+		this.#events(["end", "change"], e);
 	}
 
 	#detach() {
@@ -219,11 +285,16 @@ class Draggable {
 	}
 
 	get xy(): XY {
-		return xyFrom(this.#state);
+		return xyOf(this.#state);
 	}
 
 	set xy(xy: XY) {
-		this.#resetState(newMovement(xy, UnitType.VALUE, xyFrom(this.#state, {x: "pixelSizeX", y: "pixelSizeY"})));
+		let newXy = xyOf(xy);
+		if (typeof newXy.x !== "number" || typeof newXy.y !== "number") {
+			console.error("Attempt to set draggable.xy to a non-numeric value. Defaulting to {x:0, y:0}, Offending value:", xy);
+			newXy = {x: 0, y: 0};
+		}
+		this.#resetState(this.#xyToNewMovement(newXy, UnitType.VALUE));
 	}
 
 	get pxXy() {
@@ -231,7 +302,28 @@ class Draggable {
 	}
 
 	set pxXy(xy: XY) {
-		this.#resetState(newMovement(xy, UnitType.PIXEL, xyFrom(this.#state, {x: "pxSizeX", y: "pxSizeY"})));
+		let newXy = xy;
+		if (typeof xy.x !== "number" || typeof xy.y !== "number") {
+			console.error("Attempt to set draggable.pxXy to a non-numeric value. Defaulting to {x:0, y:0}. Offending value:", xy);
+			newXy = {x: 0, y: 0};
+		}
+		this.#resetState(this.#xyToNewMovement(newXy, UnitType.PIXEL));
+	}
+
+	get pixelSize() {
+		return this.#pixelSize;
+	}
+
+	set pixelSize(xyOrSize: XY | number) {
+		let xy;
+		if (typeof xyOrSize === "number") {
+			this.#pixelSize = {x: xyOrSize, y: xyOrSize};
+			return;
+		}
+		if (!(typeof xyOrSize.x === "number" && typeof xyOrSize.y === "number")) {
+			console.error("Attempt to set draggable.pixelSize to a non-numeric value. Defaulting to {x:1, y:1}. Offending value:", xyOrSize);
+		}
+		this.#pixelSize = xyOrSize;
 	}
 
 	// Method accessors (read-only)
@@ -247,6 +339,18 @@ class Draggable {
 	get setHandlers() {
 		return this.#setHandlers;
 	}
+
+	get limit() {
+		return this.#limit;
+	}
+
+	set limit(lim: Partial<Limits>) {
+		const limit = {unit: UnitType.VALUE, x: [-Infinity, Infinity], y: [-Infinity, Infinity], ...lim};
+		if (limit.x[0] > limit.x[1]) limit.x = [limit.x[1], limit.x[0]];
+		if (limit.y[0] > limit.y[1]) limit.y = [limit.y[1], limit.y[0]];
+		this.#limit = limit;
+	}
+
 }
 
 export default Draggable;
